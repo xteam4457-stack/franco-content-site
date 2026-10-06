@@ -1,0 +1,111 @@
+name: TEST - Franco Luxury Reel
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/test_franco_luxury_reel.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  luxury-reel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout public media repo
+        uses: actions/checkout@v4
+        with:
+          path: site
+
+      - name: Checkout private Franco agent
+        uses: actions/checkout@v4
+        with:
+          repository: xteam4457-stack/franco-content-agent
+          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          path: agent
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: agent/reels/package.json
+
+      - name: Install dependencies
+        run: |
+          cd agent
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          cd reels
+          npm install
+
+      - name: Prepare forced luxury Reel
+        working-directory: agent
+        env:
+          FRANCO_REEL_TEMPLATE: LUXURY_LIFESTYLE
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SHEET_ID: 1EtAqlsDVZuHem4_yZebOG3bs9_ESGjSbbU08MQAKUnY
+          GEMINI_API_KEY: ${{ secrets.FRANCO_GEMINI_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.FRANCO_PEXELS_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: 8479865303
+        run: |
+          python reel_agent.py prepare \
+            --props reels/generated/reel.json \
+            --meta reels/generated/meta.json \
+            --force
+
+      - name: Read Reel ID
+        id: reelmeta
+        working-directory: agent
+        run: |
+          ID=$(python -c "import json; print(json.load(open('reels/generated/meta.json'))['content_id'])")
+          echo "content_id=$ID" >> "$GITHUB_OUTPUT"
+
+      - name: Render luxury Reel
+        working-directory: agent/reels
+        run: |
+          mkdir -p out
+          npx remotion render src/index.ts FrancoReel "out/${{ steps.reelmeta.outputs.content_id }}.mp4" \
+            --props=generated/reel.json \
+            --codec=h264 \
+            --pixel-format=yuv420p \
+            --concurrency=2
+
+      - name: Save MP4
+        run: |
+          mkdir -p site/media/franco/reels
+          cp "agent/reels/out/${{ steps.reelmeta.outputs.content_id }}.mp4" \
+             "site/media/franco/reels/${{ steps.reelmeta.outputs.content_id }}.mp4"
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "media/franco/reels/${{ steps.reelmeta.outputs.content_id }}.mp4"
+          if git diff --cached --quiet; then
+            echo "No media changes."
+          else
+            git commit -m "Add cinematic Franco luxury Reel"
+            git push
+          fi
+
+      - name: Add to CONTENT and send Telegram preview
+        working-directory: agent
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SHEET_ID: 1EtAqlsDVZuHem4_yZebOG3bs9_ESGjSbbU08MQAKUnY
+          TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: 8479865303
+        run: |
+          VIDEO_URL="https://raw.githubusercontent.com/xteam4457-stack/franco-content-site/main/media/franco/reels/${{ steps.reelmeta.outputs.content_id }}.mp4"
+          python reel_agent.py finalize \
+            --meta reels/generated/meta.json \
+            --video-url "$VIDEO_URL"
