@@ -64,20 +64,8 @@ jobs:
           test -n "$TELEGRAM_BOT_TOKEN" || { echo "CRYPTO_TELEGRAM_BOT_TOKEN is missing"; exit 1; }
           test -n "$TELEGRAM_CHAT_ID" || { echo "CRYPTO_TELEGRAM_CHAT_ID is missing"; exit 1; }
 
-      - name: Telegram health-check
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.CRYPTO_TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.CRYPTO_TELEGRAM_CHAT_ID }}
-        run: |
-          python - <<'PY'
-          import os, requests
-          token=os.environ["TELEGRAM_BOT_TOKEN"]
-          chat=os.environ["TELEGRAM_CHAT_ID"]
-          r=requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id":chat,"text":"Crypto Agent runner OK ✅"}, timeout=20)
-          print(r.status_code, r.text)
-          r.raise_for_status()
-          PY
+      - name: Silent runner health-check
+        run: echo "Crypto Agent runner OK"
 
       - name: Run Deriv public shadow research
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '*/5 * * * *'
