@@ -40,6 +40,8 @@ jobs:
             agent/deriv_public_status.json
             agent/deriv_demo_status.json
             agent/deriv_demo_trades.csv
+            agent/deriv_scanner_ab.csv
+            agent/multi_exchange_scanner.json
           key: free-deriv-state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             free-deriv-state-
