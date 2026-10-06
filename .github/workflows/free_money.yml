@@ -45,6 +45,21 @@ jobs:
           test -n "$TELEGRAM_BOT_TOKEN" || { echo "MONEY_TELEGRAM_BOT_TOKEN is missing"; exit 1; }
           test -n "$TELEGRAM_CHAT_ID" || { echo "MONEY_TELEGRAM_CHAT_ID is missing"; exit 1; }
 
+      - name: Telegram health-check
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.MONEY_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.MONEY_TELEGRAM_CHAT_ID }}
+        run: |
+          python - <<'PY'
+          import os, requests
+          token=os.environ["TELEGRAM_BOT_TOKEN"]
+          chat=os.environ["TELEGRAM_CHAT_ID"]
+          r=requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id":chat,"text":"Money Agent runner OK ✅"}, timeout=20)
+          print(r.status_code, r.text)
+          r.raise_for_status()
+          PY
+
       - name: Restore CRM state
         working-directory: agent
         run: |
