@@ -1,0 +1,67 @@
+name: TEST - Franco Remotion Reel
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/test_franco_reel.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout public media repo
+        uses: actions/checkout@v4
+        with:
+          path: site
+
+      - name: Checkout private Franco agent
+        uses: actions/checkout@v4
+        with:
+          repository: xteam4457-stack/franco-content-agent
+          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          path: agent
+          ref: main
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: agent/reels/package.json
+
+      - name: Install Remotion dependencies
+        working-directory: agent/reels
+        run: npm install
+
+      - name: Render test Franco Reel
+        working-directory: agent/reels
+        run: |
+          mkdir -p out
+          npx remotion render src/index.ts FrancoReel out/franco-test.mp4 \
+            --props=examples/test-reel.json \
+            --codec=h264 \
+            --pixel-format=yuv420p \
+            --concurrency=2
+
+      - name: Save rendered reel in public media repo
+        run: |
+          mkdir -p site/media/franco/reels
+          cp agent/reels/out/franco-test.mp4 site/media/franco/reels/franco-test.mp4
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add media/franco/reels/franco-test.mp4
+          if git diff --cached --quiet; then
+            echo "No reel changes to commit."
+          else
+            git commit -m "Add Franco Remotion test reel"
+            git push
+          fi
