@@ -114,3 +114,5 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.CRYPTO_TELEGRAM_CHAT_ID }}
           STRATEGY_EQUITY_CAP: "50"
         run: python daily_report.py
+
+# verify-deriv-demo
