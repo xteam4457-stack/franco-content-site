@@ -15,32 +15,15 @@ jobs:
   resend:
     runs-on: ubuntu-latest
     steps:
-      - name: Resend 08:30 Franco candidate to Telegram
+      - name: Resend Franco candidate
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.FRANCO_TELEGRAM_CHAT_ID }}
         run: |
-          test -n "$TELEGRAM_BOT_TOKEN" || { echo "FRANCO_TELEGRAM_BOT_TOKEN missing"; exit 1; }
-          test -n "$TELEGRAM_CHAT_ID" || { echo "FRANCO_TELEGRAM_CHAT_ID missing"; exit 1; }
-
+          test -n "$TELEGRAM_BOT_TOKEN" || exit 1
+          test -n "$TELEGRAM_CHAT_ID" || exit 1
           REPLY_MARKUP='{"inline_keyboard":[[{"text":"✅ Одобрить","callback_data":"fv_ok:PIXABAY-485901"},{"text":"❌ Отклонить","callback_data":"fv_no:PIXABAY-485901"}]]}'
-
-          curl --fail --show-error --silent \
-            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
-            -F "chat_id=${TELEGRAM_CHAT_ID}" \
-            -F "photo=https://raw.githubusercontent.com/xteam4457-stack/franco-content-site/main/media/franco/pixabay_485901.jpg" \
-            -F "caption=📸 Franco Content — повторная проверка
-
-Статус: 🟡 На проверке
-📅 06.10.2026 08:30
-📍 Dubai, United Arab Emirates
-📌 Формат: STORY
-Категория: Fitness
-ID: PIXABAY-485901
-
-Story text:
-Mentalidad clara, cuerpo activo." \
-            -F "reply_markup=${REPLY_MARKUP}"
-
+          CAPTION='📸 Franco Content — повторная проверка | 06.10.2026 08:30 | Dubai | STORY Fitness | ID: PIXABAY-485901 | Mentalidad clara, cuerpo activo.'
+          curl --fail --show-error --silent -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" -F "chat_id=${TELEGRAM_CHAT_ID}" -F "photo=https://raw.githubusercontent.com/xteam4457-stack/franco-content-site/main/media/franco/pixabay_485901.jpg" -F "caption=${CAPTION}" -F "reply_markup=${REPLY_MARKUP}"
           echo
           echo "Telegram resend completed."
