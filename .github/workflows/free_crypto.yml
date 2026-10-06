@@ -98,6 +98,8 @@ jobs:
           DERIV_DEMO_STAKE: "1"
           DERIV_DEMO_MIN_PROFIT_FRACTION: "0.90"
           DERIV_DEMO_AUTO_TRADE: "1"
+          TELEGRAM_BOT_TOKEN: ${{ secrets.CRYPTO_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.CRYPTO_TELEGRAM_CHAT_ID }}
         run: |
           if [ -n "$DERIV_PAT" ] && [ -n "$DERIV_APP_ID" ]; then
             echo "Mode: DERIV DEMO"
@@ -113,6 +115,6 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.CRYPTO_TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.CRYPTO_TELEGRAM_CHAT_ID }}
           STRATEGY_EQUITY_CAP: "50"
-        run: python daily_report.py
+        run: python deriv_daily_report.py
 
 # verify-deriv-demo
