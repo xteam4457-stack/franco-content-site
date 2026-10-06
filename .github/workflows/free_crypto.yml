@@ -54,6 +54,14 @@ jobs:
         working-directory: agent
         run: pip install -r requirements.txt
 
+      - name: Validate Crypto Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.CRYPTO_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.CRYPTO_TELEGRAM_CHAT_ID }}
+        run: |
+          test -n "$TELEGRAM_BOT_TOKEN" || { echo "CRYPTO_TELEGRAM_BOT_TOKEN is missing"; exit 1; }
+          test -n "$TELEGRAM_CHAT_ID" || { echo "CRYPTO_TELEGRAM_CHAT_ID is missing"; exit 1; }
+
       - name: Run Deriv public shadow research
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '*/10 * * * *'
         working-directory: agent
