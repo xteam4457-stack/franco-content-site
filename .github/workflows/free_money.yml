@@ -1,0 +1,81 @@
+name: FREE - Money Agent
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */4 * * *"
+    - cron: "*/10 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: free-money-agent
+  cancel-in-progress: false
+
+jobs:
+  money:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout private Money Agent
+        uses: actions/checkout@v4
+        with:
+          repository: xteam4457-stack/money-agent
+          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          path: agent
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Restore CRM state
+        working-directory: agent
+        run: |
+          git fetch origin agent-state || true
+          if git show origin/agent-state:crm.sqlite > /tmp/crm.sqlite 2>/dev/null; then
+            mv /tmp/crm.sqlite crm.sqlite
+          fi
+          git show origin/agent-state:sent_log.csv > sent_log.csv 2>/dev/null || true
+
+      - name: Prepare proposals every 4 hours
+        if: github.event_name == 'workflow_dispatch' || contains(github.event.schedule, '17 ')
+        working-directory: agent
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.MONEY_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.MONEY_TELEGRAM_CHAT_ID }}
+        run: python agent.py
+
+      - name: Process Telegram approvals
+        working-directory: agent
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.MONEY_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.MONEY_TELEGRAM_CHAT_ID }}
+        run: python approvals.py
+
+      - name: Persist Money Agent state
+        working-directory: agent
+        run: |
+          if [ -f crm.sqlite ]; then mv crm.sqlite /tmp/saved-crm.sqlite; fi
+          if [ -f approved_queue.csv ]; then mv approved_queue.csv /tmp/approved_queue.csv; fi
+          if [ -f send_queue.csv ]; then mv send_queue.csv /tmp/send_queue.csv; fi
+          if [ -f sent_log.csv ]; then mv sent_log.csv /tmp/sent_log.csv; fi
+          git config user.name 'money-agent'
+          git config user.email 'money-agent@users.noreply.github.com'
+          git fetch origin agent-state || true
+          if git show-ref --verify --quiet refs/remotes/origin/agent-state; then
+            git checkout -B agent-state origin/agent-state
+          else
+            git checkout --orphan agent-state
+            git rm -rf . || true
+          fi
+          [ -f /tmp/saved-crm.sqlite ] && cp /tmp/saved-crm.sqlite crm.sqlite || true
+          [ -f /tmp/approved_queue.csv ] && cp /tmp/approved_queue.csv approved_queue.csv || true
+          [ -f /tmp/send_queue.csv ] && cp /tmp/send_queue.csv send_queue.csv || true
+          [ -f /tmp/sent_log.csv ] && cp /tmp/sent_log.csv sent_log.csv || true
+          git add -f crm.sqlite approved_queue.csv send_queue.csv sent_log.csv 2>/dev/null || true
+          git diff --cached --quiet || git commit -m 'Persist Money Agent state'
+          git push origin agent-state
