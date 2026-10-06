@@ -1,0 +1,56 @@
+name: FREE - Crypto Deriv Shadow Agent
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"
+    - cron: "5 18 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: free-crypto-shadow-agent
+  cancel-in-progress: false
+
+jobs:
+  crypto-shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout private Crypto Agent
+        uses: actions/checkout@v4
+        with:
+          repository: xteam4457-stack/crypto-paper-agent
+          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          path: agent
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: agent/requirements.txt
+
+      - name: Install dependencies
+        working-directory: agent
+        run: pip install -r requirements.txt
+
+      - name: Run Deriv public shadow research
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/10 * * * *'
+        working-directory: agent
+        env:
+          DERIV_SHADOW_SYMBOL: "R_10"
+          DERIV_SHADOW_EXPIRY_SECONDS: "60"
+          DERIV_SHADOW_MODEL: "momentum_12"
+        run: python deriv_public_shadow.py
+
+      - name: Send daily report
+        if: github.event.schedule == '5 18 * * *'
+        working-directory: agent
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.CRYPTO_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.CRYPTO_TELEGRAM_CHAT_ID }}
+          STRATEGY_EQUITY_CAP: "50"
+        run: python daily_report.py
