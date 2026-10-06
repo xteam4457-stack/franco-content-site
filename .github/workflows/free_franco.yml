@@ -2,6 +2,11 @@ name: FREE - Franco Content Agent
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/free_franco.yml"
   schedule:
     - cron: "12 */2 * * *"
     - cron: "47 * * * *"
@@ -42,13 +47,13 @@ jobs:
         working-directory: agent
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
-          GOOGLE_SHEET_ID: ${{ secrets.FRANCO_GOOGLE_SHEET_ID }}
+          GOOGLE_SHEET_ID: 1EtAqlsDVZuHem4_yZebOG3bs9_ESGjSbbU08MQAKUnY
           GEMINI_API_KEY: ${{ secrets.FRANCO_GEMINI_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.FRANCO_PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.FRANCO_PIXABAY_API_KEY }}
           FRANCO_MEDIA_GITHUB_TOKEN: ${{ secrets.PRIVATE_REPOS_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.FRANCO_TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: 8479865303
         run: python main.py
 
       - name: Run Buffer publisher hourly
@@ -56,8 +61,8 @@ jobs:
         working-directory: agent
         env:
           BUFFER_API_KEY: ${{ secrets.FRANCO_BUFFER_API_KEY }}
-          BUFFER_CHANNEL_ID: ${{ secrets.FRANCO_BUFFER_CHANNEL_ID }}
-          BUFFER_ORGANIZATION_ID: ${{ secrets.FRANCO_BUFFER_ORGANIZATION_ID }}
+          BUFFER_CHANNEL_ID: 6ab3d6a9ea19ca0bdec56971
+          BUFFER_ORGANIZATION_ID: 6ab3d645f846d3ce57c78f43
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
-          GOOGLE_SHEET_ID: ${{ secrets.FRANCO_GOOGLE_SHEET_ID }}
+          GOOGLE_SHEET_ID: 1EtAqlsDVZuHem4_yZebOG3bs9_ESGjSbbU08MQAKUnY
         run: python buffer_publisher.py
