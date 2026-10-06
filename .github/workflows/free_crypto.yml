@@ -8,7 +8,7 @@ on:
     paths:
       - ".github/workflows/free_crypto.yml"
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
     - cron: "5 18 * * *"
 
 permissions:
@@ -21,7 +21,7 @@ concurrency:
 jobs:
   crypto-shadow:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout private Crypto Agent
@@ -78,7 +78,7 @@ jobs:
           PY
 
       - name: Run Deriv public shadow research
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '*/10 * * * *'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '*/5 * * * *'
         working-directory: agent
         env:
           DERIV_SHADOW_SYMBOL: "R_10"
@@ -86,13 +86,12 @@ jobs:
           DERIV_SHADOW_MODEL: "momentum_12"
         run: python deriv_public_shadow.py
 
-      - name: Run Deriv Demo when credentials are configured
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '*/10 * * * *'
+      - name: Run Deriv Demo multi-market validation
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '*/5 * * * *'
         working-directory: agent
         env:
           DERIV_PAT: ${{ secrets.CRYPTO_DERIV_PAT }}
           DERIV_APP_ID: ${{ secrets.CRYPTO_DERIV_APP_ID }}
-          DERIV_DEMO_SYMBOL: "R_10"
           DERIV_DEMO_EXPIRY_SECONDS: "60"
           DERIV_DEMO_MODEL: "momentum_12"
           DERIV_DEMO_STAKE: "1"
@@ -102,8 +101,11 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.CRYPTO_TELEGRAM_CHAT_ID }}
         run: |
           if [ -n "$DERIV_PAT" ] && [ -n "$DERIV_APP_ID" ]; then
-            echo "Mode: DERIV DEMO"
-            python deriv_demo_agent.py
+            echo "Mode: DERIV DEMO MULTI-MARKET"
+            for symbol in R_10 R_25 R_50 R_75 R_100; do
+              echo "=== Deriv Demo $symbol ==="
+              DERIV_DEMO_SYMBOL="$symbol" python deriv_demo_agent.py
+            done
           else
             echo "Deriv Demo credentials are not configured yet; Shadow only."
           fi
