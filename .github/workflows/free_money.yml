@@ -32,6 +32,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Validate Money Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.MONEY_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.MONEY_TELEGRAM_CHAT_ID }}
+        run: |
+          test -n "$TELEGRAM_BOT_TOKEN" || { echo "MONEY_TELEGRAM_BOT_TOKEN is missing"; exit 1; }
+          test -n "$TELEGRAM_CHAT_ID" || { echo "MONEY_TELEGRAM_CHAT_ID is missing"; exit 1; }
+
       - name: Restore CRM state
         working-directory: agent
         run: |
