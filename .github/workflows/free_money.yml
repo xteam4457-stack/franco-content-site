@@ -72,6 +72,8 @@ jobs:
             mv /tmp/crm.sqlite crm.sqlite
           fi
           git show origin/agent-state:sent_log.csv > sent_log.csv 2>/dev/null || true
+          git show origin/agent-state:reply_log.csv > reply_log.csv 2>/dev/null || true
+          git show origin/agent-state:llm_usage.jsonl > llm_usage.jsonl 2>/dev/null || true
 
       - name: Prepare proposals every 4 hours
         if: github.event_name == 'workflow_dispatch' || contains(github.event.schedule, '17 ')
@@ -79,6 +81,9 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.MONEY_TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.MONEY_TELEGRAM_CHAT_ID }}
+          GEMINI_API_KEY: ${{ secrets.MONEY_GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.MONEY_GROQ_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MONEY_MISTRAL_API_KEY }}
         run: python agent.py
 
       - name: Process Telegram approvals
@@ -88,6 +93,19 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.MONEY_TELEGRAM_CHAT_ID }}
         run: python approvals.py
 
+      - name: Process Gmail drafts, authorized sends and replies
+        working-directory: agent
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.MONEY_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.MONEY_TELEGRAM_CHAT_ID }}
+          GMAIL_CLIENT_ID: ${{ secrets.MONEY_GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.MONEY_GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.MONEY_GMAIL_REFRESH_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.MONEY_GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.MONEY_GROQ_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MONEY_MISTRAL_API_KEY }}
+        run: python mail_worker.py
+
       - name: Persist Money Agent state
         working-directory: agent
         run: |
@@ -95,6 +113,8 @@ jobs:
           if [ -f approved_queue.csv ]; then mv approved_queue.csv /tmp/approved_queue.csv; fi
           if [ -f send_queue.csv ]; then mv send_queue.csv /tmp/send_queue.csv; fi
           if [ -f sent_log.csv ]; then mv sent_log.csv /tmp/sent_log.csv; fi
+          if [ -f reply_log.csv ]; then mv reply_log.csv /tmp/reply_log.csv; fi
+          if [ -f llm_usage.jsonl ]; then mv llm_usage.jsonl /tmp/llm_usage.jsonl; fi
           git config user.name 'money-agent'
           git config user.email 'money-agent@users.noreply.github.com'
           git fetch origin agent-state || true
@@ -108,6 +128,8 @@ jobs:
           [ -f /tmp/approved_queue.csv ] && cp /tmp/approved_queue.csv approved_queue.csv || true
           [ -f /tmp/send_queue.csv ] && cp /tmp/send_queue.csv send_queue.csv || true
           [ -f /tmp/sent_log.csv ] && cp /tmp/sent_log.csv sent_log.csv || true
-          git add -f crm.sqlite approved_queue.csv send_queue.csv sent_log.csv 2>/dev/null || true
+          [ -f /tmp/reply_log.csv ] && cp /tmp/reply_log.csv reply_log.csv || true
+          [ -f /tmp/llm_usage.jsonl ] && cp /tmp/llm_usage.jsonl llm_usage.jsonl || true
+          git add -f crm.sqlite approved_queue.csv send_queue.csv sent_log.csv reply_log.csv llm_usage.jsonl 2>/dev/null || true
           git diff --cached --quiet || git commit -m 'Persist Money Agent state'
           git push origin agent-state
