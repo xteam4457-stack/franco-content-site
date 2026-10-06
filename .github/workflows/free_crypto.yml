@@ -2,6 +2,11 @@ name: FREE - Crypto Deriv Shadow Agent
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/free_crypto.yml"
   schedule:
     - cron: "*/10 * * * *"
     - cron: "5 18 * * *"
@@ -27,6 +32,18 @@ jobs:
           path: agent
           ref: main
 
+      - name: Restore Deriv research state
+        uses: actions/cache@v4
+        with:
+          path: |
+            agent/deriv_public_shadow.csv
+            agent/deriv_public_status.json
+            agent/deriv_demo_status.json
+            agent/deriv_demo_trades.csv
+          key: free-deriv-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            free-deriv-state-
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -38,13 +55,33 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run Deriv public shadow research
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/10 * * * *'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '*/10 * * * *'
         working-directory: agent
         env:
           DERIV_SHADOW_SYMBOL: "R_10"
           DERIV_SHADOW_EXPIRY_SECONDS: "60"
           DERIV_SHADOW_MODEL: "momentum_12"
         run: python deriv_public_shadow.py
+
+      - name: Run Deriv Demo when credentials are configured
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '*/10 * * * *'
+        working-directory: agent
+        env:
+          DERIV_PAT: ${{ secrets.CRYPTO_DERIV_PAT }}
+          DERIV_APP_ID: ${{ secrets.CRYPTO_DERIV_APP_ID }}
+          DERIV_DEMO_SYMBOL: "R_10"
+          DERIV_DEMO_EXPIRY_SECONDS: "60"
+          DERIV_DEMO_MODEL: "momentum_12"
+          DERIV_DEMO_STAKE: "1"
+          DERIV_DEMO_MIN_PROFIT_FRACTION: "0.90"
+          DERIV_DEMO_AUTO_TRADE: "1"
+        run: |
+          if [ -n "$DERIV_PAT" ] && [ -n "$DERIV_APP_ID" ]; then
+            echo "Mode: DERIV DEMO"
+            python deriv_demo_agent.py
+          else
+            echo "Deriv Demo credentials are not configured yet; Shadow only."
+          fi
 
       - name: Send daily report
         if: github.event.schedule == '5 18 * * *'
