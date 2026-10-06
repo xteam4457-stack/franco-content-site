@@ -1,0 +1,42 @@
+name: Retry Franco Buffer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/retry_franco_buffer.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  retry-buffer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: xteam4457-stack/franco-content-agent
+          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          path: agent
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: agent
+        run: pip install requests==2.32.3 gspread==6.1.4 google-auth==2.35.0
+
+      - name: Retry Buffer publisher
+        working-directory: agent
+        env:
+          BUFFER_API_KEY: ${{ secrets.FRANCO_BUFFER_API_KEY }}
+          BUFFER_CHANNEL_ID: 6ab3d6a9ea19ca0bdec56971
+          BUFFER_ORGANIZATION_ID: 6ab3d645f846d3ce57c78f43
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SHEET_ID: 1EtAqlsDVZuHem4_yZebOG3bs9_ESGjSbbU08MQAKUnY
+        run: python buffer_publisher.py
