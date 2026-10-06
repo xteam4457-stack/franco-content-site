@@ -52,12 +52,16 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.MONEY_TELEGRAM_CHAT_ID }}
         run: |
           python - <<'PY'
-          import os, requests
+          import os, urllib.parse, urllib.request
           token=os.environ["TELEGRAM_BOT_TOKEN"]
           chat=os.environ["TELEGRAM_CHAT_ID"]
-          r=requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id":chat,"text":"Money Agent runner OK ✅"}, timeout=20)
-          print(r.status_code, r.text)
-          r.raise_for_status()
+          data=urllib.parse.urlencode({"chat_id":chat,"text":"Money Agent runner OK ✅"}).encode()
+          req=urllib.request.Request(f"https://api.telegram.org/bot{token}/sendMessage", data=data)
+          with urllib.request.urlopen(req, timeout=20) as r:
+              body=r.read().decode()
+              print(r.status, body)
+              if r.status != 200:
+                  raise SystemExit(1)
           PY
 
       - name: Restore CRM state
