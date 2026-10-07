@@ -85,7 +85,7 @@ jobs:
           DERIV_DEMO_EXPIRY_SECONDS: "60"
           DERIV_DEMO_MODEL: "momentum_12"
           DERIV_DEMO_STAKE: "1"
-          DERIV_DEMO_MIN_PROFIT_FRACTION: "0.90"
+          DERIV_DEMO_MIN_PROFIT_FRACTION: "0.86"
           DERIV_DEMO_AUTO_TRADE: "1"
           TELEGRAM_BOT_TOKEN: ${{ secrets.CRYPTO_TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.CRYPTO_TELEGRAM_CHAT_ID }}
