@@ -14,7 +14,7 @@ on:
     - cron: "7 * * * *"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: free-franco-telegram-agent
@@ -23,9 +23,14 @@ concurrency:
 jobs:
   telegram:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
 
     steps:
+      - name: Checkout public media repo
+        uses: actions/checkout@v4
+        with:
+          path: site
+
       - name: Checkout private Franco agent
         uses: actions/checkout@v4
         with:
@@ -42,7 +47,7 @@ jobs:
         working-directory: agent
         run: pip install -r requirements.txt
 
-      - name: Generate Telegram draft 3x daily
+      - name: Prepare Telegram post with matching image
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule != '7 * * * *'
         working-directory: agent
         env:
@@ -51,7 +56,46 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.FRANCO_GEMINI_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: 8479865303
-        run: python telegram_agent.py
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python telegram_agent.py prepare --meta telegram/generated/meta.json --force
+          else
+            python telegram_agent.py prepare --meta telegram/generated/meta.json
+          fi
+
+      - name: Publish preview image and send approval
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule != '7 * * * *'
+        working-directory: agent
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SHEET_ID: 1EtAqlsDVZuHem4_yZebOG3bs9_ESGjSbbU08MQAKUnY
+          TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: 8479865303
+        run: |
+          SKIP=$(python -c "import json; print(str(bool(json.load(open('telegram/generated/meta.json')).get('skip'))).lower())")
+          if [ "$SKIP" = "true" ]; then
+            echo "Telegram draft already exists; nothing to publish."
+            exit 0
+          fi
+
+          IMAGE=$(python -c "import json; print(json.load(open('telegram/generated/meta.json'))['image_filename'])")
+          ID=$(python -c "import json; print(json.load(open('telegram/generated/meta.json'))['content_id'])")
+
+          mkdir -p ../site/media/franco/telegram
+          cp "telegram/generated/$IMAGE" "../site/media/franco/telegram/$IMAGE"
+
+          cd ../site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "media/franco/telegram/$IMAGE"
+          if ! git diff --cached --quiet; then
+            git commit -m "Add Franco Telegram image $ID"
+            git push
+          fi
+          cd ../agent
+
+          MEDIA_URL="https://raw.githubusercontent.com/xteam4457-stack/franco-content-site/main/media/franco/telegram/$IMAGE"
+          python telegram_agent.py finalize --meta telegram/generated/meta.json --media-url "$MEDIA_URL"
 
       - name: Publish approved Telegram posts hourly
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '7 * * * *'
@@ -63,7 +107,7 @@ jobs:
           TELEGRAM_CHANNEL: "@FlujoDeCapital"
         run: python telegram_channel_publisher.py
 
-      - name: Verify bot can access channel
+      - name: Verify bot channel access
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         working-directory: agent
         env:
@@ -71,39 +115,37 @@ jobs:
           TELEGRAM_CHANNEL: "@FlujoDeCapital"
         run: |
           python - <<'PY'
-          import os, requests
-          token=os.environ["TELEGRAM_BOT_TOKEN"]
-          channel=os.environ["TELEGRAM_CHANNEL"]
+          import os
+          import requests
 
-          me=requests.get(
+          token = os.environ["TELEGRAM_BOT_TOKEN"]
+          channel = os.environ["TELEGRAM_CHANNEL"]
+
+          me = requests.get(
               f"https://api.telegram.org/bot{token}/getMe",
               timeout=20,
           ).json()
           if not me.get("ok"):
               raise SystemExit("getMe failed")
 
-          bot_id=me["result"]["id"]
-          bot_username=me["result"].get("username","")
-
-          chat=requests.get(
+          bot_id = me["result"]["id"]
+          chat = requests.get(
               f"https://api.telegram.org/bot{token}/getChat",
-              params={"chat_id":channel},
+              params={"chat_id": channel},
               timeout=20,
           ).json()
-
           if not chat.get("ok"):
-              print("CHANNEL_ACCESS=NO")
-              print("Add the Franco bot as admin in @FlujoDeCapital.")
-              raise SystemExit(0)
+              raise SystemExit("CHANNEL_ACCESS=NO")
 
-          member=requests.get(
+          member = requests.get(
               f"https://api.telegram.org/bot{token}/getChatMember",
-              params={"chat_id":channel,"user_id":bot_id},
+              params={"chat_id": channel, "user_id": bot_id},
               timeout=20,
           ).json()
-
-          status=(member.get("result") or {}).get("status","unknown")
-          print(f"BOT_USERNAME={bot_username}")
-          print(f"CHANNEL_ACCESS=YES")
+          status = (member.get("result") or {}).get("status", "unknown")
+          print("CHANNEL_ACCESS=YES")
           print(f"CHANNEL_MEMBER_STATUS={status}")
+
+          if status not in {"administrator", "creator"}:
+              raise SystemExit("Bot can see the channel but is not an administrator")
           PY
