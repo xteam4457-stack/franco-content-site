@@ -54,6 +54,7 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
           GOOGLE_SHEET_ID: 1EtAqlsDVZuHem4_yZebOG3bs9_ESGjSbbU08MQAKUnY
           GEMINI_API_KEY: ${{ secrets.FRANCO_GEMINI_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.FRANCO_PEXELS_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: 8479865303
         run: |
