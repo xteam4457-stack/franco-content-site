@@ -150,3 +150,5 @@ jobs:
           if status not in {"administrator", "creator"}:
               raise SystemExit("Bot can see the channel but is not an administrator")
           PY
+
+# strict-coin-match-v1
