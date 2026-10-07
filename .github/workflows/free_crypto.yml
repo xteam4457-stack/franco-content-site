@@ -42,6 +42,7 @@ jobs:
             agent/deriv_demo_trades.csv
             agent/deriv_scanner_ab.csv
             agent/multi_exchange_scanner.json
+            agent/deriv_intelligence_log.csv
           key: free-deriv-state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             free-deriv-state-
@@ -71,10 +72,13 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '*/5 * * * *'
         working-directory: agent
         env:
-          DERIV_SHADOW_SYMBOL: "R_10"
           DERIV_SHADOW_EXPIRY_SECONDS: "60"
           DERIV_SHADOW_MODEL: "momentum_12"
-        run: python deriv_public_shadow.py
+        run: |
+          for symbol in R_10 R_25 R_50 R_75 R_100; do
+            echo "=== Deriv Shadow $symbol ==="
+            DERIV_SHADOW_SYMBOL="$symbol" python deriv_public_shadow.py
+          done
 
       - name: Run Deriv Demo multi-market validation
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '*/5 * * * *'
