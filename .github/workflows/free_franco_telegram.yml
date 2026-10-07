@@ -1,0 +1,109 @@
+name: FREE - Franco Telegram Agent
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/free_franco_telegram.yml"
+  schedule:
+    - cron: "20 12 * * *"
+    - cron: "20 18 * * *"
+    - cron: "20 23 * * *"
+    - cron: "7 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: free-franco-telegram-agent
+  cancel-in-progress: false
+
+jobs:
+  telegram:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout private Franco agent
+        uses: actions/checkout@v4
+        with:
+          repository: xteam4457-stack/franco-content-agent
+          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          path: agent
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: agent
+        run: pip install -r requirements.txt
+
+      - name: Generate Telegram draft 3x daily
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule != '7 * * * *'
+        working-directory: agent
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SHEET_ID: 1EtAqlsDVZuHem4_yZebOG3bs9_ESGjSbbU08MQAKUnY
+          GEMINI_API_KEY: ${{ secrets.FRANCO_GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: 8479865303
+        run: python telegram_agent.py
+
+      - name: Publish approved Telegram posts hourly
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '7 * * * *'
+        working-directory: agent
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SHEET_ID: 1EtAqlsDVZuHem4_yZebOG3bs9_ESGjSbbU08MQAKUnY
+          TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL: "@FlujoDeCapital"
+        run: python telegram_channel_publisher.py
+
+      - name: Verify bot can access channel
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        working-directory: agent
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL: "@FlujoDeCapital"
+        run: |
+          python - <<'PY'
+          import os, requests
+          token=os.environ["TELEGRAM_BOT_TOKEN"]
+          channel=os.environ["TELEGRAM_CHANNEL"]
+
+          me=requests.get(
+              f"https://api.telegram.org/bot{token}/getMe",
+              timeout=20,
+          ).json()
+          if not me.get("ok"):
+              raise SystemExit("getMe failed")
+
+          bot_id=me["result"]["id"]
+          bot_username=me["result"].get("username","")
+
+          chat=requests.get(
+              f"https://api.telegram.org/bot{token}/getChat",
+              params={"chat_id":channel},
+              timeout=20,
+          ).json()
+
+          if not chat.get("ok"):
+              print("CHANNEL_ACCESS=NO")
+              print("Add the Franco bot as admin in @FlujoDeCapital.")
+              raise SystemExit(0)
+
+          member=requests.get(
+              f"https://api.telegram.org/bot{token}/getChatMember",
+              params={"chat_id":channel,"user_id":bot_id},
+              timeout=20,
+          ).json()
+
+          status=(member.get("result") or {}).get("status","unknown")
+          print(f"BOT_USERNAME={bot_username}")
+          print(f"CHANNEL_ACCESS=YES")
+          print(f"CHANNEL_MEMBER_STATUS={status}")
+          PY
