@@ -10,8 +10,8 @@ on:
   schedule:
     - cron: "20 12 * * *"
     - cron: "20 18 * * *"
-    - cron: "20 23 * * *"
-    - cron: "7 * * * *"
+    - cron: "20 0 * * *"
+    - cron: "*/10 * * * *"
 
 permissions:
   contents: write
@@ -48,7 +48,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Prepare Telegram post with matching image
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule != '7 * * * *'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule != '*/10 * * * *'
         working-directory: agent
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
@@ -65,7 +65,7 @@ jobs:
           fi
 
       - name: Publish preview image and send approval
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule != '7 * * * *'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule != '*/10 * * * *'
         working-directory: agent
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
@@ -99,7 +99,7 @@ jobs:
           python telegram_agent.py finalize --meta telegram/generated/meta.json --media-url "$MEDIA_URL"
 
       - name: Publish approved Telegram posts hourly
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '7 * * * *'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.schedule == '*/10 * * * *'
         working-directory: agent
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
