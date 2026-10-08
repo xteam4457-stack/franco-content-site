@@ -47,6 +47,7 @@ jobs:
             agent/deriv_threshold_ab.csv
             agent/deriv_challengers.csv
             agent/deriv_challenger_report.json
+            agent/deriv_demo_cooldown.json
           key: free-deriv-state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             free-deriv-state-
