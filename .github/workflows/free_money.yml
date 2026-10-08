@@ -9,7 +9,7 @@ on:
       - ".github/workflows/free_money.yml"
   schedule:
     - cron: "17 */4 * * *"
-    - cron: "*/10 * * * *"
+    # Old 10-minute sales approvals polling disabled
 
 permissions:
   contents: read
@@ -55,37 +55,14 @@ jobs:
           git show origin/agent-state:sent_log.csv > sent_log.csv 2>/dev/null || true
           git show origin/agent-state:reply_log.csv > reply_log.csv 2>/dev/null || true
           git show origin/agent-state:llm_usage.jsonl > llm_usage.jsonl 2>/dev/null || true
+          git show origin/agent-state:opportunities_state.json > opportunities_state.json 2>/dev/null || true
 
-      - name: Prepare proposals every 4 hours
-        if: github.event_name == 'workflow_dispatch' || contains(github.event.schedule, '17 ')
+      - name: Discover zero-budget opportunities
         working-directory: agent
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.MONEY_TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.MONEY_TELEGRAM_CHAT_ID }}
-          GEMINI_API_KEY: ${{ secrets.MONEY_GEMINI_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.MONEY_GROQ_API_KEY }}
-          MISTRAL_API_KEY: ${{ secrets.MONEY_MISTRAL_API_KEY }}
-        run: python agent.py
-
-      - name: Process Telegram approvals
-        working-directory: agent
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.MONEY_TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.MONEY_TELEGRAM_CHAT_ID }}
-        run: python approvals.py
-
-      - name: Process Gmail drafts, authorized sends and replies
-        working-directory: agent
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.MONEY_TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.MONEY_TELEGRAM_CHAT_ID }}
-          GMAIL_CLIENT_ID: ${{ secrets.MONEY_GMAIL_CLIENT_ID }}
-          GMAIL_CLIENT_SECRET: ${{ secrets.MONEY_GMAIL_CLIENT_SECRET }}
-          GMAIL_REFRESH_TOKEN: ${{ secrets.MONEY_GMAIL_REFRESH_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.MONEY_GEMINI_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.MONEY_GROQ_API_KEY }}
-          MISTRAL_API_KEY: ${{ secrets.MONEY_MISTRAL_API_KEY }}
-        run: python mail_worker.py
+        run: python money_agent_v2.py
 
       - name: Persist Money Agent state
         working-directory: agent
@@ -96,6 +73,8 @@ jobs:
           if [ -f sent_log.csv ]; then mv sent_log.csv /tmp/sent_log.csv; fi
           if [ -f reply_log.csv ]; then mv reply_log.csv /tmp/reply_log.csv; fi
           if [ -f llm_usage.jsonl ]; then mv llm_usage.jsonl /tmp/llm_usage.jsonl; fi
+          if [ -f opportunities_state.json ]; then mv opportunities_state.json /tmp/opportunities_state.json; fi
+          if [ -f opportunities.json ]; then mv opportunities.json /tmp/opportunities.json; fi
           git config user.name 'money-agent'
           git config user.email 'money-agent@users.noreply.github.com'
           git fetch origin agent-state || true
@@ -111,6 +90,8 @@ jobs:
           [ -f /tmp/sent_log.csv ] && cp /tmp/sent_log.csv sent_log.csv || true
           [ -f /tmp/reply_log.csv ] && cp /tmp/reply_log.csv reply_log.csv || true
           [ -f /tmp/llm_usage.jsonl ] && cp /tmp/llm_usage.jsonl llm_usage.jsonl || true
-          git add -f crm.sqlite approved_queue.csv send_queue.csv sent_log.csv reply_log.csv llm_usage.jsonl 2>/dev/null || true
+          [ -f /tmp/opportunities_state.json ] && cp /tmp/opportunities_state.json opportunities_state.json || true
+          [ -f /tmp/opportunities.json ] && cp /tmp/opportunities.json opportunities.json || true
+          git add -f crm.sqlite approved_queue.csv send_queue.csv sent_log.csv reply_log.csv llm_usage.jsonl opportunities_state.json opportunities.json 2>/dev/null || true
           git diff --cached --quiet || git commit -m 'Persist Money Agent state'
           git push origin agent-state
