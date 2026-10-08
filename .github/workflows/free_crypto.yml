@@ -98,7 +98,7 @@ jobs:
         run: |
           if [ -n "$DERIV_PAT" ] && [ -n "$DERIV_APP_ID" ]; then
             echo "Mode: DERIV DEMO MULTI-MARKET"
-            for symbol in R_25 R_50 R_75 R_100; do
+            for symbol in R_25 R_100; do
               echo "=== Deriv Demo $symbol ==="
               DERIV_DEMO_SYMBOL="$symbol" python deriv_demo_agent.py
             done
