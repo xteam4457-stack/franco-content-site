@@ -43,6 +43,8 @@ jobs:
             agent/deriv_scanner_ab.csv
             agent/multi_exchange_scanner.json
             agent/deriv_intelligence_log.csv
+            agent/deriv_strategy_research.json
+            agent/deriv_threshold_ab.csv
           key: free-deriv-state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             free-deriv-state-
