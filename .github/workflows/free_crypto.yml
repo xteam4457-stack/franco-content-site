@@ -116,3 +116,5 @@ jobs:
         run: python deriv_daily_report.py
 
 # verify-deriv-demo
+
+# refresh-deriv-history-summary
