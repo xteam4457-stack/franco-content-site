@@ -101,9 +101,14 @@ jobs:
         run: |
           if [ -n "$DERIV_PAT" ] && [ -n "$DERIV_APP_ID" ]; then
             echo "Mode: DERIV DEMO MULTI-MARKET"
-            for symbol in R_50 R_75 R_100; do
+            for symbol in R_50 R_75; do
               echo "=== Deriv Demo $symbol ==="
-              DERIV_DEMO_SYMBOL="$symbol" python deriv_demo_agent.py
+              if [ "$symbol" = "R_50" ]; then
+                expiry=30
+              else
+                expiry=45
+              fi
+              DERIV_DEMO_SYMBOL="$symbol"               DERIV_DEMO_EXPIRY_SECONDS="$expiry"               DERIV_DEMO_STRATEGY_VERSION="v4_challenger_filters"               python deriv_demo_agent.py
             done
           else
             echo "Deriv Demo credentials are not configured yet; Shadow only."
