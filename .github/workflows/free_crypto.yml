@@ -106,7 +106,7 @@ jobs:
               if [ "$symbol" = "R_50" ]; then
                 expiry=30
               else
-                expiry=45
+                expiry=60
               fi
               DERIV_DEMO_SYMBOL="$symbol"               DERIV_DEMO_EXPIRY_SECONDS="$expiry"               DERIV_DEMO_STRATEGY_VERSION="v4_challenger_filters"               python deriv_demo_agent.py
             done
