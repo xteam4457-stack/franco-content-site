@@ -1,0 +1,54 @@
+name: FREE - YouTube AI Agent (manual pilot)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: free-youtube-agent
+  cancel-in-progress: false
+
+jobs:
+  youtube:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout separate private YouTube Agent
+        uses: actions/checkout@v4
+        with:
+          repository: xteam4457-stack/youtube-ai-agent
+          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          ref: main
+          path: agent
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: agent
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Ensure YouTube-only Telegram configuration exists
+        env:
+          YOUTUBE_TELEGRAM_BOT_TOKEN: ${{ secrets.YOUTUBE_TELEGRAM_BOT_TOKEN }}
+          YOUTUBE_TELEGRAM_CHAT_ID: ${{ secrets.YOUTUBE_TELEGRAM_CHAT_ID }}
+        run: |
+          test -n "$YOUTUBE_TELEGRAM_BOT_TOKEN"
+          test -n "$YOUTUBE_TELEGRAM_CHAT_ID"
+
+      - name: Build draft only (no publishing)
+        working-directory: agent
+        env:
+          YOUTUBE_TELEGRAM_BOT_TOKEN: ${{ secrets.YOUTUBE_TELEGRAM_BOT_TOKEN }}
+          YOUTUBE_TELEGRAM_CHAT_ID: ${{ secrets.YOUTUBE_TELEGRAM_CHAT_ID }}
+          YOUTUBE_PUBLISH_ENABLED: "false"
+          YOUTUBE_APPROVAL_REQUIRED: "true"
+        run: python main.py --draft-only
+
+# Manual pilot only. No cron, no access to Franco/crypto/money secrets.
+# Create the private youtube-ai-agent repo and YOUTUBE_* secrets before enabling this workflow.
