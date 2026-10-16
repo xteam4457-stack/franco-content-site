@@ -115,6 +115,33 @@ jobs:
             echo "Deriv Demo credentials are not configured yet; Shadow only."
           fi
 
+      - name: Summarize recent Deriv Demo trades (no account identifiers)
+        if: always()
+        working-directory: agent
+        run: |
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+          p=Path("deriv_demo_trades.csv")
+          if not p.exists():
+              print("DERIV TRADE ANALYSIS: local CSV unavailable")
+          else:
+              with p.open(newline="", encoding="utf-8") as f:
+                  rows=[r for r in csv.DictReader(f) if r.get("status","").upper() in ("WON","LOST")]
+              print(f"DERIV TRADE ANALYSIS: local_closed_trades={len(rows)}")
+              for name, subset in [("ALL_LAST_100",rows[-100:])]+[
+                  (f"{symbol}_{side}",[r for r in rows if r.get("symbol")==symbol and r.get("direction","").upper()==side][-100:])
+                  for symbol in ("R_50","R_75") for side in ("UP","DOWN")
+              ]:
+                  n=len(subset)
+                  wins=sum(r.get("status","").upper()=="WON" for r in subset)
+                  pnl=sum(float(r.get("profit") or 0) for r in subset)
+                  payouts=[float(r["profit_fraction"]) for r in subset if r.get("profit_fraction")]
+                  avg_payout=sum(payouts)/len(payouts) if payouts else None
+                  breakeven=100/(1+avg_payout) if avg_payout is not None and avg_payout>0 else None
+                  print(f"DERIV TRADE ANALYSIS {name}: n={n} wins={wins} WR={wins/n*100:.2f}% PNL={pnl:+.2f} avg_profit_fraction={avg_payout if avg_payout is not None else 'NA'} breakeven_WR={f'{breakeven:.2f}%' if breakeven is not None else 'NA'}" if n else f"DERIV TRADE ANALYSIS {name}: n=0")
+          PY
+
       - name: Send daily report
         if: github.event.schedule == '5 18 * * *'
         working-directory: agent
