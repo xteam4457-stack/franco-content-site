@@ -46,6 +46,19 @@ jobs:
           test -n "$YOUTUBE_TELEGRAM_BOT_TOKEN"
           test -n "$YOUTUBE_TELEGRAM_CHAT_ID"
 
+      - name: Install offline video tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
+          python -m pip install Pillow
+
+      - name: Render and send test MP4 (no YouTube publishing)
+        working-directory: agent
+        env:
+          YOUTUBE_TELEGRAM_BOT_TOKEN: ${{ secrets.YOUTUBE_TELEGRAM_BOT_TOKEN }}
+          YOUTUBE_TELEGRAM_CHAT_ID: ${{ secrets.YOUTUBE_TELEGRAM_CHAT_ID }}
+        run: python video_preview.py --video-preview
+
       - name: Build draft only (no publishing)
         working-directory: agent
         env:
