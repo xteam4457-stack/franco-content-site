@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: xteam4457-stack/youtube-ai-agent
-          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          token: ${{ secrets.YOUTUBE_PRIVATE_REPO_TOKEN }}
           ref: main
           path: agent
 
