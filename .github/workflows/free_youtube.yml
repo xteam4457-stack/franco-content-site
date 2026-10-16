@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # Re-test after configuring YOUTUBE_PRIVATE_REPO_TOKEN.
       - name: Checkout separate private YouTube Agent
         uses: actions/checkout@v4
         with:
