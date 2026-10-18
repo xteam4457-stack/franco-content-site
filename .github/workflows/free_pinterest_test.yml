@@ -1,0 +1,56 @@
+name: FREE - Pinterest API Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/free_pinterest_test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pinterest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout private Franco agent
+        uses: actions/checkout@v4
+        with:
+          repository: xteam4457-stack/franco-content-agent
+          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          path: agent
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependency
+        run: pip install requests==2.32.3
+
+      - name: Check token
+        env:
+          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$PINTEREST_ACCESS_TOKEN" ]; then
+            echo "PINTEREST_TOKEN_PRESENT=NO"
+          else
+            echo "PINTEREST_TOKEN_PRESENT=YES"
+          fi
+
+      - name: Test Pinterest trial API
+        working-directory: agent
+        env:
+          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+          PINTEREST_TEST_SEARCH: "POV trading lifestyle night"
+          PINTEREST_COUNTRY_CODE: "ES"
+          PINTEREST_LOCALE: "es-ES"
+        run: |
+          if [ -z "$PINTEREST_ACCESS_TOKEN" ]; then
+            echo "SKIP_API_TEST_TOKEN_MISSING"
+            exit 0
+          fi
+          python pinterest_test.py
