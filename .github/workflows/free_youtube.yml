@@ -64,7 +64,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Generate short offline US-English narration sample
+      - name: Generate full English documentary narration
         working-directory: agent
         run: |
           sudo apt-get update -qq
@@ -74,15 +74,17 @@ jobs:
           BASE="https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium"
           curl -fL --retry 2 "$BASE/en_US-lessac-medium.onnx" -o output/voice_models/en_US-lessac-medium.onnx
           curl -fL --retry 2 "$BASE/en_US-lessac-medium.onnx.json" -o output/voice_models/en_US-lessac-medium.onnx.json
-          sed -n '1,8p' episodes/001_mcdonalds/script_en.txt | head -c 1200 > output/voice_sample/sample_script.txt
+          cp episodes/001_mcdonalds/script_en.txt output/voice_sample/sample_script.txt
           python -m piper -m output/voice_models/en_US-lessac-medium.onnx -f output/voice_sample/voice.wav < output/voice_sample/sample_script.txt
-          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 output/voice_sample/voice.wav
+          DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 output/voice_sample/voice.wav)
+          echo "Generated narration duration: $DURATION sec"
+          python -c 'import sys; n=float(sys.argv[1]); print("Duration OK" if 600<=n<=900 else "Duration outside 10-15 min"); sys.exit(0 if 600<=n<=900 else 1)' "$DURATION"
 
-      - name: Save audio sample for listening
+      - name: Preserve full narration for listening
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: youtube-episode-001-narration-sample
+          name: youtube-episode-001-full-narration
           path: agent/output/voice_sample/
           if-no-files-found: warn
           retention-days: 7
