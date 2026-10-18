@@ -54,3 +54,5 @@ jobs:
             exit 0
           fi
           python pinterest_test.py
+
+# pinterest-secret-test-1
