@@ -100,6 +100,36 @@ jobs:
             --audio output/voice_sample/voice.wav \
             --out output/roughcut/episode001_review_only.mp4
 
+      - name: Verify rough cut and extract review frames
+        working-directory: agent
+        run: |
+          python - <<'PY'
+          import json,subprocess,pathlib
+          video=pathlib.Path("output/roughcut/episode001_review_only.mp4")
+          data=json.loads(subprocess.check_output(["ffprobe","-v","error","-show_format","-show_streams","-of","json",str(video)]))
+          duration=float(data["format"]["duration"])
+          streams=data["streams"]
+          v=next(x for x in streams if x["codec_type"]=="video")
+          assert 600<=duration<=900, f"Invalid duration: {duration}"
+          assert (v["width"],v["height"])==(1920,1080), "Invalid resolution"
+          assert any(x["codec_type"]=="audio" for x in streams), "No audio"
+          folder=pathlib.Path("output/review_frames")
+          folder.mkdir(parents=True,exist_ok=True)
+          for i in range(12):
+              t=(i+.5)*duration/12
+              subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y","-ss",str(t),"-i",str(video),"-frames:v","1","-vf","scale=640:360",str(folder/f"scene_{i+1:02d}.jpg")],check=True)
+          print(f"TECHNICAL PASS {duration:.1f}s 1920x1080 with audio; editorial review is still required")
+          PY
+
+      - name: Save representative frames for image review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-episode-001-review-frames
+          path: agent/output/review_frames/
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Save private rough cut (not approved for publication)
         if: always()
         uses: actions/upload-artifact@v4
