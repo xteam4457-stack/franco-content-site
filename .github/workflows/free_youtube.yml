@@ -53,7 +53,7 @@ jobs:
       - name: Collect Wikimedia still-image candidates for review
         working-directory: agent
         continue-on-error: true
-        run: python collect_commons_images.py --limit 12 --out-dir output/wikimedia
+        run: python collect_commons_images.py --limit 84 --out-dir output/wikimedia
 
       - name: Preserve research candidates
         uses: actions/upload-artifact@v4
