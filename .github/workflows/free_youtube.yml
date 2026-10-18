@@ -73,23 +73,22 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Generate full English documentary narration
+      - name: Generate natural English narration (Kokoro)
         working-directory: agent
+        timeout-minutes: 9
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
-          python -m pip install "piper-tts==1.3.0"
-          mkdir -p output/voice_models output/voice_sample
-          BASE="https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium"
-          curl -fL --retry 2 "$BASE/en_US-lessac-medium.onnx" -o output/voice_models/en_US-lessac-medium.onnx
-          curl -fL --retry 2 "$BASE/en_US-lessac-medium.onnx.json" -o output/voice_models/en_US-lessac-medium.onnx.json
-          cp episodes/001_mcdonalds/script_en.txt output/voice_sample/sample_script.txt
-          python -m piper -m output/voice_models/en_US-lessac-medium.onnx -f output/voice_sample/voice.wav < output/voice_sample/sample_script.txt
-          ffmpeg -hide_banner -loglevel error -y -i output/voice_sample/voice.wav -af "atempo=0.96" output/voice_sample/voice_adjusted.wav
-          mv output/voice_sample/voice_adjusted.wav output/voice_sample/voice.wav
+          sudo apt-get install -y -qq ffmpeg espeak-ng
+          python -m pip install "kokoro>=0.9.4,<1" soundfile
+          mkdir -p output/voice_sample
+          python narration_kokoro.py --script episodes/001_mcdonalds/script_en.txt --out output/voice_sample/voice_raw.wav --voice am_michael
+          RAW=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 output/voice_sample/voice_raw.wav)
+          echo "Raw Kokoro narration: $RAW seconds"
+          FACTOR=$(python -c 'import sys; x=float(sys.argv[1]); print(max(0.85,min(1.15,x/615)))' "$RAW")
+          ffmpeg -hide_banner -loglevel error -y -i output/voice_sample/voice_raw.wav -af "atempo=$FACTOR" output/voice_sample/voice.wav
           DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 output/voice_sample/voice.wav)
-          echo "Generated narration duration: $DURATION sec"
-          python -c 'import sys; n=float(sys.argv[1]); print("Duration OK" if 600<=n<=900 else "Duration outside 10-15 min"); sys.exit(0 if 600<=n<=900 else 1)' "$DURATION"
+          echo "Kokoro narration duration: $DURATION sec"
+          python -c 'import sys; n=float(sys.argv[1]); assert 600<=n<=900, f"Invalid voice duration: {n}"' "$DURATION"
 
       - name: Preserve full narration for listening
         uses: actions/upload-artifact@v4
