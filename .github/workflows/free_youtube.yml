@@ -55,12 +55,20 @@ jobs:
         continue-on-error: true
         run: python collect_commons_images.py --limit 84 --out-dir output/wikimedia
 
+      - name: Create documentary photo contact sheet
+        working-directory: agent
+        run: |
+          python -m pip install Pillow
+          python make_contact_sheet.py --images output/wikimedia --out output/review_frames/asset_contact_sheet.jpg
+
       - name: Preserve research candidates
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: youtube-episode-001-commons-candidates
-          path: agent/output/wikimedia/
+          path: |
+            agent/output/wikimedia/
+            agent/output/review_frames/asset_contact_sheet.jpg
           if-no-files-found: warn
           retention-days: 7
 
