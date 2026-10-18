@@ -60,6 +60,7 @@ jobs:
         run: |
           python -m pip install Pillow
           python make_contact_sheet.py --images output/wikimedia --out output/review_frames/asset_contact_sheet.jpg
+          python audit_visuals.py --manifest output/wikimedia/candidate_assets.json --out output/review_frames/visual_audit.json
 
       - name: Preserve research candidates
         uses: actions/upload-artifact@v4
