@@ -76,6 +76,8 @@ jobs:
           curl -fL --retry 2 "$BASE/en_US-lessac-medium.onnx.json" -o output/voice_models/en_US-lessac-medium.onnx.json
           cp episodes/001_mcdonalds/script_en.txt output/voice_sample/sample_script.txt
           python -m piper -m output/voice_models/en_US-lessac-medium.onnx -f output/voice_sample/voice.wav < output/voice_sample/sample_script.txt
+          ffmpeg -hide_banner -loglevel error -y -i output/voice_sample/voice.wav -af "atempo=0.96" output/voice_sample/voice_adjusted.wav
+          mv output/voice_sample/voice_adjusted.wav output/voice_sample/voice.wav
           DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 output/voice_sample/voice.wav)
           echo "Generated narration duration: $DURATION sec"
           python -c 'import sys; n=float(sys.argv[1]); print("Duration OK" if 600<=n<=900 else "Duration outside 10-15 min"); sys.exit(0 if 600<=n<=900 else 1)' "$DURATION"
