@@ -91,6 +91,24 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Render private 10-minute editorial rough cut
+        working-directory: agent
+        timeout-minutes: 12
+        run: |
+          python render_roughcut.py \
+            --images output/wikimedia \
+            --audio output/voice_sample/voice.wav \
+            --out output/roughcut/episode001_review_only.mp4
+
+      - name: Save private rough cut (not approved for publication)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-episode-001-ROUGH-CUT-UNREVIEWED
+          path: agent/output/roughcut/
+          if-no-files-found: warn
+          retention-days: 3
+
       # Deliberately do not send the old 20-second video or auto-publish.
 
 # Manual pilot only. No cron, no access to Franco/crypto/money secrets.
