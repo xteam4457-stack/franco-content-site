@@ -46,27 +46,25 @@ jobs:
           test -n "$YOUTUBE_TELEGRAM_BOT_TOKEN"
           test -n "$YOUTUBE_TELEGRAM_CHAT_ID"
 
-      - name: Install offline video tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
-          python -m pip install Pillow
-
-      - name: Render and send test MP4 (no YouTube publishing)
+      - name: Run long-form script quality checks
         working-directory: agent
-        env:
-          YOUTUBE_TELEGRAM_BOT_TOKEN: ${{ secrets.YOUTUBE_TELEGRAM_BOT_TOKEN }}
-          YOUTUBE_TELEGRAM_CHAT_ID: ${{ secrets.YOUTUBE_TELEGRAM_CHAT_ID }}
-        run: python video_preview.py --video-preview
+        run: python -m unittest test_main.py test_longform.py
 
-      - name: Build draft only (no publishing)
+      - name: Collect Wikimedia still-image candidates for review
         working-directory: agent
-        env:
-          YOUTUBE_TELEGRAM_BOT_TOKEN: ${{ secrets.YOUTUBE_TELEGRAM_BOT_TOKEN }}
-          YOUTUBE_TELEGRAM_CHAT_ID: ${{ secrets.YOUTUBE_TELEGRAM_CHAT_ID }}
-          YOUTUBE_PUBLISH_ENABLED: "false"
-          YOUTUBE_APPROVAL_REQUIRED: "true"
-        run: python main.py --draft-only
+        continue-on-error: true
+        run: python collect_commons_images.py --limit 12 --out-dir output/wikimedia
+
+      - name: Preserve research candidates
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: youtube-episode-001-commons-candidates
+          path: agent/output/wikimedia/
+          if-no-files-found: warn
+          retention-days: 7
+
+      # Deliberately do not send the old 20-second video or auto-publish.
 
 # Manual pilot only. No cron, no access to Franco/crypto/money secrets.
 # Create the private youtube-ai-agent repo and YOUTUBE_* secrets before enabling this workflow.
