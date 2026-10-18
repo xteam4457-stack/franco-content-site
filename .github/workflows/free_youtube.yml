@@ -148,6 +148,51 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Send completed video to YouTube Telegram bot for review
+        if: success()
+        working-directory: agent
+        env:
+          YOUTUBE_TELEGRAM_BOT_TOKEN: ${{ secrets.YOUTUBE_TELEGRAM_BOT_TOKEN }}
+          YOUTUBE_TELEGRAM_CHAT_ID: ${{ secrets.YOUTUBE_TELEGRAM_CHAT_ID }}
+          ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import os, pathlib, urllib.request, urllib.parse, json
+          video=pathlib.Path("output/final/episode001_mcdonalds.mp4")
+          token=os.environ["YOUTUBE_TELEGRAM_BOT_TOKEN"]
+          chat=os.environ["YOUTUBE_TELEGRAM_CHAT_ID"]
+          base=f"https://api.telegram.org/bot{token}"
+          def message(text):
+              data=urllib.parse.urlencode({"chat_id":chat,"text":text}).encode()
+              with urllib.request.urlopen(urllib.request.Request(base+"/sendMessage",data=data),timeout=30) as r:
+                  answer=json.load(r)
+              if not answer.get("ok"):raise RuntimeError("Telegram message failed")
+          size=video.stat().st_size
+          caption="McDonald's — полный ролик на проверку (не опубликован на YouTube)."
+          # Telegram cloud Bot API sendVideo / sendDocument upload limits can vary.
+          # Keep an accessible GitHub Actions artifact fallback.
+          if size>49_000_000:
+              message(f"Готов MP4 McDonald's ({size/1048576:.1f} МБ), но он слишком большой для безопасной отправки ботом. Скачай его из GitHub Actions → Artifacts: {os.environ['ACTIONS_RUN_URL']}")
+          else:
+              boundary="----YTDocUploadBoundary"
+              fields={"chat_id":chat,"caption":caption,"supports_streaming":"true"}
+              parts=[]
+              for key,value in fields.items():
+                  parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{key}\"\r\n\r\n{value}\r\n".encode())
+              parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"video\"; filename=\"{video.name}\"\r\nContent-Type: video/mp4\r\n\r\n".encode())
+              parts.append(video.read_bytes())
+              parts.append(f"\r\n--{boundary}--\r\n".encode())
+              data=b"".join(parts)
+              req=urllib.request.Request(base+"/sendVideo",data=data,headers={"Content-Type":f"multipart/form-data; boundary={boundary}"})
+              try:
+                  with urllib.request.urlopen(req,timeout=180) as r: result=json.load(r)
+                  if not result.get("ok"):raise RuntimeError("Telegram video upload rejected")
+                  print("Video sent to YouTube Telegram bot")
+              except Exception as e:
+                  print("Telegram video upload unavailable:",type(e).__name__)
+                  message(f"MP4 McDonald's собран, но отправить видео файлом не получилось. Скачать: {os.environ['ACTIONS_RUN_URL']} → Artifacts → youtube-episode-001-FULL-MP4-REVIEW")
+          PY
+
       # Editorial rights and scene relevance remain subject to approval.
       # Never publish to YouTube automatically.
 
