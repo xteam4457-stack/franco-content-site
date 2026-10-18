@@ -48,6 +48,7 @@ jobs:
           PINTEREST_TEST_SEARCH: "POV trading lifestyle night"
           PINTEREST_COUNTRY_CODE: "ES"
           PINTEREST_LOCALE: "es-ES"
+          PINTEREST_API_BASE: "https://api-sandbox.pinterest.com/v5"
         run: |
           if [ -z "$PINTEREST_ACCESS_TOKEN" ]; then
             echo "SKIP_API_TEST_TOKEN_MISSING"
