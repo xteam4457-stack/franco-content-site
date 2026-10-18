@@ -51,6 +51,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.FRANCO_GEMINI_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.FRANCO_PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.FRANCO_PIXABAY_API_KEY }}
+          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+          PINTEREST_API_BASE: "https://api.pinterest.com/v5"
           FRANCO_MEDIA_GITHUB_TOKEN: ${{ secrets.PRIVATE_REPOS_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: 8479865303
