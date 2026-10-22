@@ -1,0 +1,67 @@
+name: Test Franco Telegram Graphics
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/test_franco_telegram_graphics.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  graphics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch Franco agent source
+        uses: actions/checkout@v4
+        with:
+          repository: xteam4457-stack/franco-content-agent
+          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          path: agent
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Pillow
+        run: pip install Pillow==10.4.0
+
+      - name: Render BTC ETH SOL previews without publishing
+        working-directory: agent
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          from telegram_graphics import render_market_card
+          scenarios = [
+              ("BTC", 81093.72, -0.47,
+               "Jornada de corrección leve en el mercado cripto",
+               "Bitcoin muestra resiliencia mientras Ethereum y Solana ajustan posiciones"),
+              ("ETH", 3957.21, 8.26,
+               "Ethereum sube mientras algunos operadores evalúan el contexto",
+               "Hay que distinguir movimiento diario de tendencia antes de decidir"),
+              ("SOL", 192.94, -11.8,
+               "Movimientos importantes que estamos siguiendo en Solana durante la jornada",
+               "Las variaciones requieren atención a los riesgos y a la liquidez"),
+          ]
+          for symbol, price, change, title, subtitle in scenarios:
+              path = Path(f"telegram/graphics-test-{symbol}.png")
+              render_market_card(path, symbol, price, change, title, subtitle,
+                                 "La paciencia y la gestión del riesgo son importantes.", "MIDDAY_NOTE")
+              with Image.open(path) as image:
+                  assert image.size == (1280, 1280), image.size
+                  assert image.mode == "RGB", image.mode
+                  assert all(v < 95 for v in image.getpixel((700, 800))), "Unexpected white panel"
+              print(f"GRAPHICS_PASS {symbol} {path} {path.stat().st_size} bytes")
+          PY
+
+      - name: Upload design previews
+        uses: actions/upload-artifact@v4
+        with:
+          name: franco-telegram-graphics-preview
+          path: agent/telegram/graphics-test-*.png
+          retention-days: 7
