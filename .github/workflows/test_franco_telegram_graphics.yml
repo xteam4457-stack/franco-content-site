@@ -27,8 +27,9 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Pillow
-        run: pip install Pillow==10.4.0
+      - name: Install agent dependencies
+        working-directory: agent
+        run: pip install -r requirements.txt
 
       - name: Compile Telegram agent and inspect fallback copy
         working-directory: agent
