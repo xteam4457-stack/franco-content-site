@@ -1,0 +1,63 @@
+name: TEST - Franco Telegram Moscow Approval Window
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/test_franco_telegram_approval_schedule.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Checkout Franco source
+        uses: actions/checkout@v4
+        with:
+          repository: xteam4457-stack/franco-content-agent
+          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          path: agent
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        working-directory: agent
+        run: pip install -r requirements.txt
+      - name: Validate scripts and scheduled dates without any Telegram messages
+        working-directory: agent
+        run: |
+          python -m py_compile telegram_agent.py telegram_channel_publisher.py telegram_graphics.py
+          python telegram_agent.py prepare --help
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from zoneinfo import ZoneInfo
+          from telegram_agent import TZ, planned_slot, advance_payload
+          from telegram_channel_publisher import slot_key
+          sample = [
+              {"symbol": "BTC", "price": 81093.0, "change_pct": -0.47, "high": 0, "low": 0},
+              {"symbol": "ETH", "price": 3000.0, "change_pct": 1.2, "high": 0, "low": 0},
+              {"symbol": "SOL", "price": 180.0, "change_pct": -2.1, "high": 0, "low": 0},
+          ]
+          for date in (datetime(2026,10,22,14,15,tzinfo=timezone.utc),
+                       datetime(2026,11,1,14,15,tzinfo=timezone.utc)):
+              observed = date.astimezone(TZ)
+              assert date.astimezone(ZoneInfo("Europe/Moscow")).hour == 17
+              for kind, hour in (("MORNING_MARKET",9),("MIDDAY_NOTE",15),("EVENING_RECAP",21)):
+                  planned = planned_slot(observed,kind,days_ahead=1)
+                  assert planned.hour == hour, (kind,planned)
+                  assert planned.date() > observed.date(), (kind,planned)
+                  row = {"Timeline DateTime": planned.isoformat()}
+                  due, key = slot_key(row)
+                  assert key == (planned.date().isoformat(), hour), (key,planned)
+                  text = advance_payload(sample,kind,observed)
+                  assert "Moscú" in text["subtitle"]
+                  assert "en vivo" in text["subtitle"] or "actuales" in text["subtitle"]
+                  print("PASS",kind,"approved_at_MSK",date.astimezone(ZoneInfo("Europe/Moscow")),
+                        "publishes",planned.isoformat())
+          print("DRY_RUN=PASS; NO_POSTS_SENT")
+          PY
