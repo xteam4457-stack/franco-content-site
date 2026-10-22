@@ -55,7 +55,7 @@ jobs:
               with Image.open(path) as image:
                   assert image.size == (1280, 1280), image.size
                   assert image.mode == "RGB", image.mode
-                  assert all(v < 95 for v in image.getpixel((700, 800))), "Unexpected white panel"
+                  assert all(v < 95 for v in image.getpixel((700, 682))), "Unexpected white panel"
               print(f"GRAPHICS_PASS {symbol} {path} {path.stat().st_size} bytes")
           PY
 
