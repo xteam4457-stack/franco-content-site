@@ -30,6 +30,23 @@ jobs:
       - name: Install Pillow
         run: pip install Pillow==10.4.0
 
+      - name: Compile Telegram agent and inspect fallback copy
+        working-directory: agent
+        run: |
+          python -m py_compile telegram_graphics.py telegram_agent.py
+          python - <<'PY'
+          from telegram_agent import fallback_payload
+          sample = [
+              {"symbol": "BTC", "price": 81093, "change_pct": -0.47},
+              {"symbol": "ETH", "price": 3957, "change_pct": 1.48},
+              {"symbol": "SOL", "price": 190, "change_pct": -3.12},
+          ]
+          for kind in ("MORNING_MARKET", "MIDDAY_NOTE", "EVENING_RECAP"):
+              x = fallback_payload(sample, kind)
+              assert all(x.get(k) for k in ("title", "subtitle", "note", "text", "focus_symbol"))
+              print("COPY_PASS", kind, x["title"], x["focus_symbol"])
+          PY
+
       - name: Render BTC ETH SOL previews without publishing
         working-directory: agent
         run: |
