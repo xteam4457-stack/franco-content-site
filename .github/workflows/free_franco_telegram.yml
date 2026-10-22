@@ -3,9 +3,11 @@ name: FREE - Franco Telegram Agent
 on:
   workflow_dispatch:
   schedule:
-    - cron: "20 12 * * *"
-    - cron: "20 18 * * *"
-    - cron: "20 0 * * *"
+    # UTC 14:00, 14:15, 14:30 => Moscow 17:00, 17:15, 17:30 year-round.
+    # All three posts are reviewed today and scheduled for tomorrow in New York.
+    - cron: "0 14 * * *"
+    - cron: "15 14 * * *"
+    - cron: "30 14 * * *"
     - cron: "*/10 * * * *"
 
 permissions:
@@ -18,7 +20,7 @@ concurrency:
 jobs:
   telegram:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Checkout public media repo
@@ -42,7 +44,7 @@ jobs:
         working-directory: agent
         run: pip install -r requirements.txt
 
-      - name: Prepare Telegram post with matching image
+      - name: Prepare next-day Telegram post for Moscow evening approval
         if: github.event_name == 'workflow_dispatch' || github.event.schedule != '*/10 * * * *'
         working-directory: agent
         env:
@@ -53,11 +55,21 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.FRANCO_TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: 8479865303
         run: |
-          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            python telegram_agent.py prepare --meta telegram/generated/meta.json --force
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            POST_TYPE="MORNING_MARKET"
           else
-            python telegram_agent.py prepare --meta telegram/generated/meta.json
+            case "${{ github.event.schedule }}" in
+              "0 14 * * *")  POST_TYPE="MORNING_MARKET" ;;
+              "15 14 * * *") POST_TYPE="MIDDAY_NOTE" ;;
+              "30 14 * * *") POST_TYPE="EVENING_RECAP" ;;
+              *) echo "Unknown Telegram preview schedule"; exit 1 ;;
+            esac
           fi
+          echo "Moscow 17:00–18:00 review window: $POST_TYPE for tomorrow's New York schedule"
+          python telegram_agent.py prepare \
+            --meta telegram/generated/meta.json \
+            --post-type "$POST_TYPE" \
+            --days-ahead 1
 
       - name: Publish preview image and send approval
         if: github.event_name == 'workflow_dispatch' || github.event.schedule != '*/10 * * * *'
@@ -93,7 +105,7 @@ jobs:
           MEDIA_URL="https://raw.githubusercontent.com/xteam4457-stack/franco-content-site/main/media/franco/telegram/$IMAGE"
           python telegram_agent.py finalize --meta telegram/generated/meta.json --media-url "$MEDIA_URL"
 
-      - name: Publish approved Telegram posts hourly
+      - name: Publish approved Telegram posts every 10 minutes
         if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/10 * * * *'
         working-directory: agent
         env:
