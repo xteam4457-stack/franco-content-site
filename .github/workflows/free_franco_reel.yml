@@ -7,8 +7,7 @@ on:
       - main
     paths:
       - ".github/workflows/free_franco_reel.yml"
-  schedule:
-    - cron: "22 7 * * *"
+  # Video generation paused by user: manual dispatch only.
 
 permissions:
   contents: write
