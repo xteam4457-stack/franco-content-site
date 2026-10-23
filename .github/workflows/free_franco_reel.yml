@@ -2,11 +2,6 @@ name: FREE - Franco Reel Agent
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/free_franco_reel.yml"
   # Video generation paused by user: manual dispatch only; no push or cron.
 
 permissions:
