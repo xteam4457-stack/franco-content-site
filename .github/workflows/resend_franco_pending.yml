@@ -2,11 +2,6 @@ name: Resend Franco Pending Review
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/resend_franco_pending.yml"
 
 permissions:
   contents: read
