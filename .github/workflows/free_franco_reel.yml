@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - ".github/workflows/free_franco_reel.yml"
-  # Video generation paused by user: manual dispatch only.
+  # Video generation paused by user: manual dispatch only; no push or cron.
 
 permissions:
   contents: write
