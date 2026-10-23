@@ -59,10 +59,11 @@ jobs:
         run: python main.py
 
       - name: Run Buffer publisher hourly
-        if: github.event_name == 'workflow_dispatch' || contains(github.event.schedule, '47 ')
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || contains(github.event.schedule, '47 ')
         working-directory: agent
         env:
           BUFFER_API_KEY: ${{ secrets.FRANCO_BUFFER_API_KEY }}
+          FRANCO_ENABLE_REELS: "false"
           BUFFER_CHANNEL_ID: 6ab3d6a9ea19ca0bdec56971
           BUFFER_ORGANIZATION_ID: 6ab3d645f846d3ce57c78f43
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FRANCO_GOOGLE_SERVICE_ACCOUNT_JSON }}
