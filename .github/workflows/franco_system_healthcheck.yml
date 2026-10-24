@@ -54,3 +54,5 @@ jobs:
 # Validate Telegram footer with @Franco_Varela1
 
 # Oct 24 Telegram card and copy simplification regression
+
+# Oct 24 final: test cleaned future Telegram posts, queued-copy guard and footer
