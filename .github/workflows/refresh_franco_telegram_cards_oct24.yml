@@ -1,0 +1,84 @@
+name: FIX - Franco Telegram Cards Oct 24
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/refresh_franco_telegram_cards_oct24.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: franco-card-cleanup-oct24
+  cancel-in-progress: false
+
+jobs:
+  clean-cards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout public media
+        uses: actions/checkout@v4
+        with:
+          path: site
+
+      - name: Checkout private Franco render library
+        uses: actions/checkout@v4
+        with:
+          repository: xteam4457-stack/franco-content-agent
+          token: ${{ secrets.PRIVATE_REPOS_TOKEN }}
+          path: agent
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Pillow
+        run: pip install Pillow==10.4.0
+
+      - name: Re-render only three not-yet-published approved Telegram cards
+        working-directory: agent
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from telegram_graphics import render_market_card
+          cards = [
+              ("PEXELS-1792778416", "BTC", 81515, 0.47,
+               "BTC, ETH y SOL: panorama del mercado",
+               "Movimientos moderados en las principales criptos.",
+               "MORNING_MARKET"),
+              ("PEXELS-1792779816", "ETH", 2406, 1.14,
+               "ETH lidera el movimiento",
+               "Las diferencias entre BTC, ETH y SOL dejan pistas.",
+               "MIDDAY_NOTE"),
+              ("PEXELS-1792780734", "BTC", 81433, 0.34,
+               "BTC, ETH y SOL: movimientos moderados",
+               "Tres activos bajo la lupa en el mercado cripto.",
+               "EVENING_RECAP"),
+          ]
+          for asset_id, symbol, price, change, title, subtitle, kind in cards:
+              target = Path("../site/media/franco/telegram") / (asset_id + "-clean.png")
+              render_market_card(target, symbol, price, change, title, subtitle,
+                                 "", kind)
+              assert target.stat().st_size > 10000
+              print("CLEAN_CARD_CREATED", target, target.stat().st_size)
+          PY
+
+      - name: Push clean images only
+        working-directory: site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add media/franco/telegram/PEXELS-1792778416-clean.png
+          git add media/franco/telegram/PEXELS-1792779816-clean.png
+          git add media/franco/telegram/PEXELS-1792780734-clean.png
+          if git diff --cached --quiet; then
+            echo "NO_CHANGES"
+          else
+            git commit -m "Replace three pending Franco Telegram infographics without time or disclaimer"
+            git push
+          fi
+          echo "CLEAN_CARDS_PUBLISHED"
